@@ -24,8 +24,8 @@ export function HomePage(): JSX.Element {
       </Title>
       <SearchControl
         search={{ resourceType: 'Patient', fields: ['name', 'birthdate', 'gender'] }}
+        onNew={() => navigate('/Patient/new')}
         onClick={(e) => navigate(`/${getReferenceString(e.resource)}`)}
-        hideToolbar
       />
       <Outlet />
     </Document>
