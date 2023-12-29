@@ -21,6 +21,7 @@ export function PatientPage(): JSX.Element {
           <TabLink value="overview" />
           <TabLink value="timeline" />
           <TabLink value="history" />
+          <TabLink value="CarePlan" />
         </Tabs.List>
       </Tabs>
       <Outlet />
