@@ -4,19 +4,19 @@ import Conditions from '../components/Conditions';
 import CarePlanComp from '../components/CarePlanComp';
 import { useParams } from 'react-router-dom';
 import { Patient } from '@medplum/fhirtypes';
-import { Flex, Grid, Loader } from '@mantine/core';
+import { Flex, Grid, Loader, Modal } from '@mantine/core';
 import { getReferenceString } from '@medplum/core';
 import { Document, SearchControl } from '@medplum/react';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { medplum } from '../main';
 import { CarePlan, Condition, Reference } from '@medplum/fhirtypes';
-import { Box } from '@mantine/core';
 
 type ConditionWithCarePlan = Condition & { isOnCarePlan: boolean };
 
 const CarePlanPage = () => {
   const { id } = useParams();
   const patient = useResource<Patient>({ reference: `Patient/${id}` });
+
   if (!patient) {
     return <Loader />;
   }
@@ -50,6 +50,7 @@ const CarePlanPage = () => {
     medplum
       .graphql(query)
       .then((response) => {
+        console.log('🚀 ~ file: CarePlanPage.tsx:53 ~ .then ~ response:', response);
         const conditionList = response.data.Patient.ConditionList;
         const carePlanList = response.data.Patient.CarePlanList;
 
@@ -67,18 +68,19 @@ const CarePlanPage = () => {
       .catch(console.error);
   }, []);
 
-  const fields = ['id', 'title', 'note'];
   return (
-    <Fragment key={getReferenceString(patient)}>
-      <Grid gutter="xs" justify="start" columns={12}>
-        <Grid.Col span={6}>
-          <Conditions conditions={conditions?.filter((condition) => !condition.isOnCarePlan) || []} />
-        </Grid.Col>
-        <Grid.Col span={6}>
-          <CarePlanComp />
-        </Grid.Col>
-      </Grid>
-    </Fragment>
+    <>
+      <Fragment key={getReferenceString(patient)}>
+        <Grid gutter="xs" justify="start" columns={12}>
+          <Grid.Col span={6}>
+            <Conditions conditions={conditions?.filter((condition) => !condition.isOnCarePlan) || []} />
+          </Grid.Col>
+          <Grid.Col span={6}>
+            <CarePlanComp />
+          </Grid.Col>
+        </Grid>
+      </Fragment>
+    </>
   );
 };
 
