@@ -16,6 +16,7 @@ type ConditionWithCarePlan = Condition & { isOnCarePlan: boolean };
 const CarePlanPage = () => {
   const { id } = useParams();
   const patient = useResource<Patient>({ reference: `Patient/${id}` });
+  const [patientCarePlans, setPatientCarePlans] = useState<CarePlan[]>([]);
 
   if (!patient) {
     return <Loader />;
@@ -40,6 +41,7 @@ const CarePlanPage = () => {
         }
         CarePlanList(_reference: patient, _count: 100, _sort: "-_lastUpdated") {
           id,
+          title,
           addresses {
             reference
           }
@@ -50,7 +52,6 @@ const CarePlanPage = () => {
     medplum
       .graphql(query)
       .then((response) => {
-        console.log('🚀 ~ file: CarePlanPage.tsx:53 ~ .then ~ response:', response);
         const conditionList = response.data.Patient.ConditionList;
         const carePlanList = response.data.Patient.CarePlanList;
 
@@ -63,6 +64,7 @@ const CarePlanPage = () => {
           return { ...condition, isOnCarePlan };
         });
 
+        setPatientCarePlans(carePlanList);
         setConditions(conditionsWithCarePlan);
       })
       .catch(console.error);
@@ -73,7 +75,10 @@ const CarePlanPage = () => {
       <Fragment key={getReferenceString(patient)}>
         <Grid gutter="xs" justify="start" columns={12}>
           <Grid.Col span={6}>
-            <Conditions conditions={conditions?.filter((condition) => !condition.isOnCarePlan) || []} />
+            <Conditions
+              conditions={conditions?.filter((condition) => !condition.isOnCarePlan) || []}
+              carePlanList={patientCarePlans}
+            />
           </Grid.Col>
           <Grid.Col span={6}>
             <CarePlanComp />

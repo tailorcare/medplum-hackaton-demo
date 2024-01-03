@@ -1,7 +1,7 @@
 import { useParams } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 
-import { Condition, PlanDefinition } from '@medplum/fhirtypes';
+import { CarePlan, Condition, Patient, PlanDefinition } from '@medplum/fhirtypes';
 import {
   Badge,
   Box,
@@ -20,14 +20,20 @@ import {
   Stack,
   Text,
 } from '@mantine/core';
-import { Document, Form, FormSection } from '@medplum/react';
+import { Document, Form, FormSection, useResource } from '@medplum/react';
 import { useHover } from '@mantine/hooks';
 import { useEffect, useState } from 'react';
 import { medplum } from '../main';
 
 type ConditionWithCarePlan = Condition & { isOnCarePlan: boolean };
 
-const Conditions = ({ conditions }: { conditions: ConditionWithCarePlan[] }) => {
+const Conditions = ({
+  conditions,
+  carePlanList,
+}: {
+  conditions: ConditionWithCarePlan[];
+  carePlanList: CarePlan[];
+}) => {
   const { id: userId } = useParams();
   const navigator = useNavigate();
   const [modalOpen, setModalOpen] = useState(false);
@@ -57,6 +63,8 @@ const Conditions = ({ conditions }: { conditions: ConditionWithCarePlan[] }) => 
     name?: string;
     conditionId?: string;
   }) => {
+    const patient = useResource<Patient>({ reference: `Patient/${id}` });
+
     return (
       <Card shadow="sm" padding="lg" radius="md" withBorder>
         <Card.Section>
@@ -80,7 +88,11 @@ const Conditions = ({ conditions }: { conditions: ConditionWithCarePlan[] }) => 
           fullWidth
           mt="md"
           radius="md"
-          onClick={() => selectPlanHandler(id, title, conditionId, userId)}
+          onClick={() =>
+            selectPlanHandler(id, title, conditionId, userId, name ? false : true, () =>
+              navigator(`/Patient/${userId}/careplan`)
+            )
+          }
         >
           Select this Care Plan
         </Button>
@@ -118,10 +130,9 @@ const Conditions = ({ conditions }: { conditions: ConditionWithCarePlan[] }) => 
           </Col>
           <Col span={8}>
             <Flex direction="column">
-              <Text weight={700}>Condition ID: {condition.id}</Text>
               {condition.bodySite?.map((bodySite, index) => (
                 <Flex key={index} direction="column">
-                  <Text weight={500} title="Related Body Site">
+                  <Text size="lg" weight={500} title="Related Body Site">
                     {' '}
                     {bodySite.coding?.map((code) => code.display)}{' '}
                   </Text>
@@ -141,7 +152,7 @@ const Conditions = ({ conditions }: { conditions: ConditionWithCarePlan[] }) => 
             id,
             name,
             title,
-        }
+        },
       }`;
     medplum.graphql(query).then((res) => {
       setPlanDefinitions(res.data.PlanDefinitionList as PlanDefinition[]);
@@ -194,6 +205,18 @@ const Conditions = ({ conditions }: { conditions: ConditionWithCarePlan[] }) => 
               />
             ))}
           </SimpleGrid>
+          <Text>Select active Care Plans</Text>
+          <SimpleGrid cols={2} p={16}>
+            {carePlanList.map((plan) => (
+              <PossibleCarePlanCard
+                key={plan.id}
+                id={plan.id}
+                title={plan.title}
+                userId={userId}
+                conditionId={selectedConditionId}
+              />
+            ))}
+          </SimpleGrid>
         </Paper>
       </Modal>
 
@@ -227,17 +250,34 @@ const Conditions = ({ conditions }: { conditions: ConditionWithCarePlan[] }) => 
   );
 };
 
-const selectPlanHandler = async (id?: string, title?: string, conditionId?: string, userId?: string) => {
+const selectPlanHandler = async (
+  id?: string,
+  title?: string,
+  conditionId?: string,
+  userId?: string,
+  isUpdate: boolean = false,
+  onSuccess?: () => void
+) => {
   if (!userId) return;
-  const res = await medplum.createResource({
-    resourceType: 'CarePlan',
-    instantiatesCanonical: [`DefinitionPlan/${id}`],
-    title: `${userId} - ${title}`,
-    status: 'active',
-    intent: 'plan',
-    subject: { reference: `Patient/${userId}` },
-    addresses: [{ reference: `Condition/${conditionId}` }],
-  });
+  if (!isUpdate) {
+    await medplum.createResource({
+      resourceType: 'CarePlan',
+      instantiatesCanonical: [`DefinitionPlan/${id}`],
+      title: `${title}`,
+      status: 'active',
+      intent: 'plan',
+      subject: { reference: `Patient/${userId}` },
+      addresses: [{ reference: `Condition/${conditionId}` }],
+    });
+  } else {
+    if (!id) return;
+    const resource = await medplum.readResource('CarePlan', id);
+    if (!resource.addresses) return;
+    resource.addresses.push({ reference: `Condition/${conditionId}` });
+
+    await medplum.updateResource(resource);
+  }
+  if (onSuccess) onSuccess();
 };
 
 export default Conditions;

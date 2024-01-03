@@ -5,17 +5,22 @@ import { useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { CarePlan } from '@medplum/fhirtypes';
 import { useHover } from '@mantine/hooks';
+import { userInfo } from 'os';
 
 const CarePlanComp = () => {
   const { id } = useParams();
   const [carePlanModal, setCarePlanModal] = useState(false);
   const [carePlanInfo, setcarePlanInfo] = useState<CarePlan>();
-
   const [carePlans, setCarePlans] = useState<CarePlan[]>();
+  const [patientName, setPatientName] = useState('');
 
   useEffect(() => {
     const query = `{
       Patient(id: "${id}") {
+        name {
+          family,
+          
+        },
         CarePlanList(_reference: patient, _count: 100, _sort: "-_lastUpdated") {
           id,
           meta { lastUpdated },
@@ -38,9 +43,10 @@ const CarePlanComp = () => {
     medplum
       .graphql(query)
       .then((response) => {
-        console.log('🚀 ~ file: CarePlanComp.tsx:28 ~ .then ~ response:', response);
         const carePlans = response.data.Patient.CarePlanList;
         setCarePlans(carePlans);
+
+        setPatientName(response.data.Patient.name[0].family);
       })
       .catch(console.error);
   }, []);
@@ -74,7 +80,9 @@ const CarePlanComp = () => {
           </Col>
           <Col span={8}>
             <Flex direction="column">
-              <Text weight={700}>Title: {carePlan.title}</Text>
+              <Text weight={700}>
+                Title: {carePlan.title} - {patientName}
+              </Text>
               {carePlan.addresses?.map((address, index) => (
                 <Text key={index}>{address.reference}</Text>
               ))}

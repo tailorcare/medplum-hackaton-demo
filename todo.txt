@@ -1,0 +1,7 @@
+[ x ] change name of careplans and conditinos
+    [ ] change name in condition inside the careplan
+
+[ x ] conditions can be added to current care plans (active careplans)
+[ ] remove conditions from the careplan or delete care plan
+
+[ ] bodyparts just pick one
