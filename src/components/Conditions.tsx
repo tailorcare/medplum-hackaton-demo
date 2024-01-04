@@ -1,10 +1,8 @@
 import { useParams } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 
-import { CarePlan, Condition, Patient, PlanDefinition } from '@medplum/fhirtypes';
+import { Attachment, CarePlan, Condition, Patient, PlanDefinition } from '@medplum/fhirtypes';
 import {
-  Badge,
-  Box,
   Button,
   Card,
   Col,
@@ -15,12 +13,19 @@ import {
   Modal,
   MultiSelect,
   Paper,
-  Select,
   SimpleGrid,
   Stack,
   Text,
 } from '@mantine/core';
-import { Document, Form, FormSection, useResource } from '@medplum/react';
+import {
+  AttachmentArrayInput,
+  AttachmentInput,
+  Document,
+  Form,
+  FormSection,
+  ResourceInput,
+  useResource,
+} from '@medplum/react';
 import { useHover } from '@mantine/hooks';
 import { useEffect, useState } from 'react';
 import { medplum } from '../main';
@@ -40,6 +45,7 @@ const Conditions = ({
   const [newConditionModal, setnewConditionModal] = useState(false);
   const [selectedConditionId, setSelectedConditionId] = useState<string>('');
   const [planDefinitions, setPlanDefinitions] = useState<PlanDefinition[]>([]);
+  const [documentsArray, setDocumentsArray] = useState<Attachment[]>([]);
 
   const modalTrigger = (conditionId: string) => {
     setSelectedConditionId(conditionId);
@@ -63,8 +69,6 @@ const Conditions = ({
     name?: string;
     conditionId?: string;
   }) => {
-    const patient = useResource<Patient>({ reference: `Patient/${id}` });
-
     return (
       <Card shadow="sm" padding="lg" radius="md" withBorder>
         <Card.Section>
@@ -154,16 +158,21 @@ const Conditions = ({
             title,
         },
       }`;
-    medplum.graphql(query).then((res) => {
-      setPlanDefinitions(res.data.PlanDefinitionList as PlanDefinition[]);
-    });
+    medplum
+      .graphql(query)
+      .then((res) => {
+        setPlanDefinitions(res.data.PlanDefinitionList as PlanDefinition[]);
+      })
+      .catch((err) => console.error(err));
   }, []);
 
   const newConditionHandler = async (record: Record<string, string>) => {
     let bodyParts = record.bodypart.split(',');
+
     const res = await medplum.createResource({
       resourceType: 'Condition',
       subject: { reference: `Patient/${userId}` },
+      recorder: { reference: record.recorder.split('/')[1] },
       bodySite: bodyParts.map((bodypart) => {
         return { coding: [{ code: bodypart, display: bodypart }] };
       }),
@@ -181,6 +190,9 @@ const Conditions = ({
               <FormSection title="Body Part">
                 <MultiSelect name="bodypart" data={['left knee', 'right arm', 'back neck']} />
               </FormSection>
+              <Text>Practitioner:</Text>
+              <ResourceInput name="recorder" resourceType="Practitioner" />
+              <AttachmentArrayInput name="documents" defaultValue={[{}]} onChange={setDocumentsArray} />
             </Stack>
             <Button mt={24} type="submit">
               Submit
